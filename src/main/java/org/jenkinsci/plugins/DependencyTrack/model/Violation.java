@@ -35,8 +35,26 @@ public class Violation implements Serializable {
     private final ViolationState state;
     private final String policyName;
     private final Component component;
+    private final String policyValue;
+    // TODO: 增加policy字段
 
     public int getStateRank() {
         return state.ordinal();
+    }
+
+    public String toString(){
+        String res="INFO";
+        switch(this.state){
+            case FAIL:
+                res = "FAIL";
+                break;
+            case WARN:
+                res = "WARN";
+                break;
+            default:
+                res = "INFO";
+        }
+
+        return String.format("The component<%s> violates the policy<%s>, the result is <%s>", component.toString(), policyValue, res);
     }
 }

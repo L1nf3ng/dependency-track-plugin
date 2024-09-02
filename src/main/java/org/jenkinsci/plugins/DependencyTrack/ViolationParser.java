@@ -42,7 +42,8 @@ class ViolationParser extends ModelParser {
         final var state = getEnum(policy, "violationState", ViolationState.class);
         final var policyName = getKeyOrNull(policy, "name");
         final var component = ComponentParser.parseComponent(json.getJSONObject("component"));
-        return new Violation(uuid, type, state, policyName, component);
+        final String policyValue = (String)json.getJSONObject("policyCondition").getOrDefault("value", "");
+        return new Violation(uuid, type, state, policyName, component, policyValue);
     }
 
 }

@@ -281,6 +281,7 @@ public class ApiClient {
                     logger.log(body);
                     throw new ApiClientException(Messages.ApiClient_Error_RetrieveViolations(status, HttpStatus.valueOf(status).getReasonPhrase()));
                 }
+                // TODO: 增加关于policy的解析
                 return ViolationParser.parse(body);
             } catch (ApiClientException e) {
                 throw e;

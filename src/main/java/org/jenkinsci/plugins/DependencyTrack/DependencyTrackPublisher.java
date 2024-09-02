@@ -385,6 +385,9 @@ public final class DependencyTrackPublisher extends Recorder implements SimpleBu
         if (team.getPermissions().contains(VIEW_POLICY_VIOLATION.toString())) {
             logger.log(Messages.Builder_Violations_Processing());
             final var violations = apiClient.getViolations(effectiveProjectId);
+            for (Violation vio : violations){
+                logger.log(vio.toString());
+            }
             violationsAction = new ViolationsRunAction(violations);
             violationsAction.setDependencyTrackUrl(getEffectiveFrontendUrl());
             violationsAction.setProjectId(effectiveProjectId);

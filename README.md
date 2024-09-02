@@ -9,6 +9,8 @@
 
 # Dependency-Track Jenkins Plugin
 
+## 注意！！修改了Violation类的结构，但test目录未做适配，如要打包，请加参数`-Dmaven.test.skip=true` 
+
 The [Dependency-Track](https://dependencytrack.org/) Jenkins plugin aids in publishing [CycloneDX](https://cyclonedx.org/) Software Bill-of-Materials (SBOM) to the Dependency-Track platform.
 
 [Dependency-Track](https://dependencytrack.org/) is an intelligent Software [Supply Chain Component Analysis](https://owasp.org/www-community/Component_Analysis) platform that allows organizations to 
