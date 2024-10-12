@@ -9,7 +9,17 @@
 
 # Dependency-Track Jenkins Plugin
 
-## 注意！！修改了Violation类的结构，但test目录未做适配，如要打包，请加参数`-Dmaven.test.skip=true` 
+## 改动点
+
+1. 修改了Violation类的结构，但test目录未做适配，如要打包，请加参数`-Dmaven.test.skip=true` 
+2. 增加了违规细节日志打印，将会把违规组件和规则详情打印到jenkins日志中。
+3. 增加了告警抑制开关和抑制阈值，因为现实中对于深层次依赖，研发往往无法直接升级修复，利用这一开关，可将依赖层数大于阈值的违规告警抑制，只打印日志不实际拦截。
+
+新特性配置GUI如图：
+
+![new-feature](docs/images/jenkins-new-feature-settings.png)
+
+--- 
 
 The [Dependency-Track](https://dependencytrack.org/) Jenkins plugin aids in publishing [CycloneDX](https://cyclonedx.org/) Software Bill-of-Materials (SBOM) to the Dependency-Track platform.
 

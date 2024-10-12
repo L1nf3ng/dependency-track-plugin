@@ -73,6 +73,12 @@ limitations under the License.
         <f:entry title="${%failOnViolationFail}" field="failOnViolationFail">
             <f:checkbox id="failOnViolationFail" />
         </f:entry>
+        <f:optionalBlock inline="true" field="ignoreViolations" title="${%enable.ignoreViolations}" >
+            <f:entry title="${%ignoreResultsDepth}" field="ignoreResultsDepth">
+                <f:number clazz="positive-number" min="1"/>
+            </f:entry>
+        </f:optionalBlock>
+
         <f:advanced title="${%riskGateThresholds} - ${%totalFindings}" align="left">
             <f:section title="${%riskGateThresholds} - ${%totalFindings}">
                 <f:description>
