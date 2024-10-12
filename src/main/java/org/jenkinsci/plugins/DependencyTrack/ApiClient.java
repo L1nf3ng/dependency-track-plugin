@@ -36,11 +36,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.DependencyTrack.model.Finding;
-import org.jenkinsci.plugins.DependencyTrack.model.Project;
-import org.jenkinsci.plugins.DependencyTrack.model.Team;
-import org.jenkinsci.plugins.DependencyTrack.model.UploadResult;
-import org.jenkinsci.plugins.DependencyTrack.model.Violation;
+import org.jenkinsci.plugins.DependencyTrack.model.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.retry.RetryPolicy;
 import org.springframework.retry.backoff.UniformRandomBackOffPolicy;
@@ -64,6 +60,8 @@ public class ApiClient {
     static final String API_KEY_HEADER = "X-Api-Key";
     static final String PROJECT_FINDINGS_URL = API_URL + "/finding/project";
     static final String PROJECT_VIOLATIONS_URL = API_URL + "/violation/project";
+    static final String PROJECT_DIRECT_DEPENDENCIES_URL = API_URL + "/dependencyGraph/project";
+    static final String COMPONENT_DEPENDENCIES_GRAPH_URL = API_URL + "/component/project";
     static final String BOM_URL = API_URL + "/bom";
     static final String BOM_TOKEN_URL = BOM_URL + "/token";
     static final String PROJECT_URL = API_URL + "/project";
@@ -290,6 +288,55 @@ public class ApiClient {
             }
         });
     }
+
+
+    @NonNull
+    @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
+    public List<Component> getProjectDirectDependencies(@NonNull final String projectUuid) throws ApiClientException{
+        final var uri = UriComponentsBuilder.fromUriString(PROJECT_DIRECT_DEPENDENCIES_URL).pathSegment("{uuid}", "directDependencies").build(projectUuid);
+        logger.log(String.format("我们将请求它：%s",uri.toString()));
+        final var request = createRequest(uri);
+        return executeWithRetry(() -> {
+            try (var response = httpClient.newCall(request).execute()) {
+                final var body = response.body().string();
+                if (!response.isSuccessful()) {
+                    final int status = response.code();
+                    logger.log(body);
+                    throw new ApiClientException(Messages.ApiClient_Error_RetrieveFindings(status, HttpStatus.valueOf(status).getReasonPhrase()));
+                }
+                return ComponentParser.parse(body);
+            } catch (ApiClientException e) {
+                throw e;
+            } catch (IOException e) {
+                throw new ApiClientException(Messages.ApiClient_Error_Connection(StringUtils.EMPTY, StringUtils.EMPTY), e);
+            }
+        });
+    }
+
+
+    @NonNull
+    @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
+    public List<Component> getComponentDependencyGraph(@NonNull final String projectUuid, @NonNull final String componentUuid) throws ApiClientException{
+        final var uri = UriComponentsBuilder.fromUriString(COMPONENT_DEPENDENCIES_GRAPH_URL).pathSegment("{uuid1}","dependencyGraph","{uuid2}").build(projectUuid,componentUuid);
+        logger.log(String.format("我们将请求它：%s",uri.toString()));
+        final var request = createRequest(uri);
+        return executeWithRetry(() -> {
+            try (var response = httpClient.newCall(request).execute()) {
+                final var body = response.body().string();
+                if (!response.isSuccessful()) {
+                    final int status = response.code();
+                    logger.log(body);
+                    throw new ApiClientException(Messages.ApiClient_Error_RetrieveFindings(status, HttpStatus.valueOf(status).getReasonPhrase()));
+                }
+                return ComponentParser.specialParse(body);
+            } catch (ApiClientException e) {
+                throw e;
+            } catch (IOException e) {
+                throw new ApiClientException(Messages.ApiClient_Error_Connection(StringUtils.EMPTY, StringUtils.EMPTY), e);
+            }
+        });
+    }
+
 
     @NonNull
     @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")

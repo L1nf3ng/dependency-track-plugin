@@ -31,6 +31,7 @@ public class Component implements Serializable {
     private final String group;
     private final String version;
     private final String purl;
+    private final String dependencyGraph;
 
     public String toString(){
         return String.format("Component| %s:%s:%s",group, name, version);
