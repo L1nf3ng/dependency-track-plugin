@@ -25,13 +25,14 @@ import hudson.model.TaskListener;
 import hudson.tasks.BuildStepMonitor;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.List;
+import java.util.*;
+
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.EnvVars;
 import hudson.tasks.Recorder;
 import hudson.util.Secret;
-import java.util.Optional;
+
 import jenkins.model.RunAction2;
 import jenkins.tasks.SimpleBuildStep;
 import lombok.AccessLevel;
@@ -39,14 +40,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.plugins.DependencyTrack.model.Finding;
-import org.jenkinsci.plugins.DependencyTrack.model.RiskGate;
-import org.jenkinsci.plugins.DependencyTrack.model.SeverityDistribution;
-import org.jenkinsci.plugins.DependencyTrack.model.Thresholds;
-import org.jenkinsci.plugins.DependencyTrack.model.UploadResult;
-import org.jenkinsci.plugins.DependencyTrack.model.Violation;
-import org.jenkinsci.plugins.DependencyTrack.model.ViolationState;
-import org.jenkinsci.plugins.DependencyTrack.model.Vulnerability;
+import org.jenkinsci.plugins.DependencyTrack.model.*;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
@@ -252,6 +246,16 @@ public final class DependencyTrackPublisher extends Recorder implements SimpleBu
      */
     private boolean failOnViolationFail;
 
+    /**
+     * 是否压制违规告警的总开关，true为压制的意思。
+     */
+    private boolean ignoreViolations;
+
+    /**
+     * 现实中的，对于深层级的间接依赖，研发往往无法主动升级修复，针对此类违规做二次处理，对层级大于依赖的Error级告警仅打印不拦截。
+     */
+    private Integer ignoreResultsDepth;
+
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
     private transient ApiClientFactory clientFactory;
@@ -385,6 +389,63 @@ public final class DependencyTrackPublisher extends Recorder implements SimpleBu
         if (team.getPermissions().contains(VIEW_POLICY_VIOLATION.toString())) {
             logger.log(Messages.Builder_Violations_Processing());
             final var violations = apiClient.getViolations(effectiveProjectId);
+            List<Violation> toBeRemoved = new ArrayList<>();
+            // add new codes here!
+            if(!violations.isEmpty() && ignoreViolations){
+                // Step1. 顶级节点的uuid加入hashset，topNodes集合
+                List<Component> comps = apiClient.getProjectDirectDependencies(effectiveProjectId);
+                Set<String> topNodes = new HashSet<>();
+                for (Component comp: comps){
+                    topNodes.add(comp.getUuid());
+                }
+                for(Violation vio:violations){
+                    long startTime = System.currentTimeMillis();
+                    // 在首层节点里，那必须告警阻拦
+                    if(topNodes.contains(vio.getComponent().getUuid()))
+                        continue;
+                    // 不在的话，层级至少为2
+                    int depth = 2;
+                    Queue<String> nodeQueue = new LinkedList<>();
+                    Queue<String> tempQueue = new LinkedList<>();
+                    List<String> fatherNodes = getFatherNodeUuids(apiClient, effectiveProjectId, vio.getComponent().getUuid());
+                    nodeQueue.addAll(fatherNodes);
+                    while(true){
+                        if(!nodeQueue.isEmpty()){
+                            String node = nodeQueue.poll();
+                            // 到达顶级节点后，跳出循环，此时depth就是最短路径。
+                            if(topNodes.contains(node))
+                                break;
+                            // Step2. 获取当前节点的所有父节点。
+                            tempQueue.addAll(getFatherNodeUuids(apiClient, effectiveProjectId, node));
+                        }
+                        else if(!tempQueue.isEmpty()){
+                            // Step3. 将缓存队列加入队列
+                            while(!tempQueue.isEmpty()){
+                                nodeQueue.add(tempQueue.poll());
+                            }
+                            depth++;
+                            if(depth> this.ignoreResultsDepth)
+                                break;
+                        }
+                        else{
+                            logger.log("理论上不可能进到这条分支，需要结合数据排查bug。");
+                        }
+                    }
+                    // logger.log(String.format("组件%s的最低依赖深度是：%d",vio.getComponent(), depth));
+                    if(depth> this.ignoreResultsDepth){
+                        // 当前违规组件所有路径均已不可能低于阈值，故告警不压抑执行。
+                        logger.log(String.format("组件%s可能引入安全风险，但是深层依赖，将不直接拦截，请评估能否升级",vio.getComponent()));
+                        //violations.remove(vio);
+                        toBeRemoved.add(vio);
+                    }
+                    long endTime = System.currentTimeMillis();
+ //                   logger.log(String.format("违规组件%s的分析时间（网络请求+层级计算）时间为：%d毫秒", vio.getComponent(), endTime-startTime));
+                }
+            }
+
+            // Step4. 重组结果。
+            for(Violation vio: toBeRemoved)
+                violations.remove(vio);
             for (Violation vio : violations){
                 logger.log(vio.toString());
             }
@@ -405,6 +466,18 @@ public final class DependencyTrackPublisher extends Recorder implements SimpleBu
         // replace with record when using Java 17
         return List.of(Optional.of(findingsAction), Optional.ofNullable(violationsAction));
     }
+
+
+    private List<String> getFatherNodeUuids(ApiClient client, String projectId, String componentId) throws ApiClientException{
+        List<Component> comps = client.getComponentDependencyGraph(projectId, componentId);
+        List<String> fatherNodeUuids = new ArrayList<>();
+        for(Component comp: comps){
+            if(comp.getDependencyGraph()!=null && comp.getDependencyGraph().contains(componentId))
+                fatherNodeUuids.add(comp.getUuid());
+        }
+        return fatherNodeUuids;
+    }
+
 
     private void evaluateRiskGates(final Run<?, ?> build, final ConsoleLogger logger, final SeverityDistribution currentDistribution, final Thresholds thresholds) throws AbortException {
         // Get previous results and evaluate to thresholds
