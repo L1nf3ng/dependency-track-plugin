@@ -75,7 +75,7 @@ limitations under the License.
         </f:entry>
         <f:optionalBlock inline="true" field="ignoreViolations" title="${%enable.ignoreViolations}" >
             <f:entry title="${%ignoreResultsDepth}" field="ignoreResultsDepth">
-                <f:number clazz="positive-number" min="1"/>
+                <f:number clazz="positive-number" min="1" max="6"/>
             </f:entry>
         </f:optionalBlock>
 
