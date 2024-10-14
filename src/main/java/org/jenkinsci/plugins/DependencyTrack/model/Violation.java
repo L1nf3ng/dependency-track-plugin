@@ -55,6 +55,6 @@ public class Violation implements Serializable {
                 res = "INFO";
         }
 
-        return String.format("The component<%s> violates the policy<%s>, the result is <%s>", component.toString(), policyValue, res);
+        return String.format("组件<%s>可能引入安全风险，构建结果为%s，请升级版本，要求：%s，请升级版本", component.toString(), res, policyValue);
     }
 }

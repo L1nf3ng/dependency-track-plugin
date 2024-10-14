@@ -294,7 +294,7 @@ public class ApiClient {
     @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
     public List<Component> getProjectDirectDependencies(@NonNull final String projectUuid) throws ApiClientException{
         final var uri = UriComponentsBuilder.fromUriString(PROJECT_DIRECT_DEPENDENCIES_URL).pathSegment("{uuid}", "directDependencies").build(projectUuid);
-        logger.log(String.format("我们将请求它：%s",uri.toString()));
+//        logger.log(String.format("我们将请求它：%s",uri.toString()));
         final var request = createRequest(uri);
         return executeWithRetry(() -> {
             try (var response = httpClient.newCall(request).execute()) {
@@ -318,7 +318,7 @@ public class ApiClient {
     @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
     public List<Component> getComponentDependencyGraph(@NonNull final String projectUuid, @NonNull final String componentUuid) throws ApiClientException{
         final var uri = UriComponentsBuilder.fromUriString(COMPONENT_DEPENDENCIES_GRAPH_URL).pathSegment("{uuid1}","dependencyGraph","{uuid2}").build(projectUuid,componentUuid);
-        logger.log(String.format("我们将请求它：%s",uri.toString()));
+//        logger.log(String.format("我们将请求它：%s",uri.toString()));
         final var request = createRequest(uri);
         return executeWithRetry(() -> {
             try (var response = httpClient.newCall(request).execute()) {
